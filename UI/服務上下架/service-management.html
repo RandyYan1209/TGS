@@ -1,0 +1,1579 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>服務上下架管理 - 開發原型</title>
+<style>
+  /* ── Reset & Base ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Microsoft JhengHei', 'Noto Sans TC', sans-serif; font-size: 14px;
+         background: #f0f2f5; color: #333; display: flex; height: 100vh; overflow: hidden; }
+
+  /* ── Sidebar ── */
+  #sidebar { width: 220px; background: #1a2536; color: #cdd9e5; flex-shrink: 0;
+             display: flex; flex-direction: column; overflow-y: auto; }
+  #sidebar .logo { padding: 18px 20px; font-size: 16px; font-weight: bold;
+                   color: #fff; border-bottom: 1px solid #2e3f55; }
+  #sidebar .logo span { color: #4da6ff; }
+  .nav-group { padding: 12px 0 4px; }
+  .nav-group-title { padding: 4px 20px 6px; font-size: 11px; color: #7a8fa3;
+                     text-transform: uppercase; letter-spacing: .8px; }
+  .nav-item { padding: 9px 20px; cursor: pointer; display: flex; align-items: center;
+              gap: 8px; transition: background .15s; border-left: 3px solid transparent; }
+  .nav-item:hover { background: #243447; }
+  .nav-item.active { background: #1e3a5c; border-left-color: #4da6ff; color: #fff; }
+  .nav-item .icon { width: 16px; text-align: center; opacity: .8; }
+
+  /* ── Main Area ── */
+  #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  #topbar { background: #fff; padding: 0 24px; height: 52px; display: flex;
+            align-items: center; justify-content: space-between;
+            border-bottom: 1px solid #e8eaed; flex-shrink: 0; }
+  .topbar-title { font-size: 15px; font-weight: bold; color: #1a2536; }
+  .breadcrumb { font-size: 12px; color: #888; }
+  .breadcrumb span { color: #4da6ff; cursor: pointer; }
+  .breadcrumb span:hover { text-decoration: underline; }
+
+  #content { flex: 1; overflow-y: auto; padding: 24px; }
+
+  /* ── Cards ── */
+  .card { background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  .card-header { padding: 16px 20px; border-bottom: 1px solid #f0f0f0;
+                 display: flex; align-items: center; justify-content: space-between; }
+  .card-title { font-size: 16px; font-weight: bold; }
+  .card-body { padding: 20px; }
+
+  /* ── Buttons ── */
+  .btn { padding: 7px 14px; border: none; border-radius: 5px; cursor: pointer;
+         font-size: 13px; font-family: inherit; transition: opacity .15s; display: inline-flex;
+         align-items: center; gap: 5px; }
+  .btn:hover { opacity: .85; }
+  .btn:active { opacity: .7; }
+  .btn-primary { background: #4da6ff; color: #fff; }
+  .btn-success { background: #28a745; color: #fff; }
+  .btn-danger  { background: #dc3545; color: #fff; }
+  .btn-warning { background: #fd7e14; color: #fff; }
+  .btn-secondary { background: #6c757d; color: #fff; }
+  .btn-outline { background: transparent; border: 1px solid #4da6ff; color: #4da6ff; }
+  .btn-sm { padding: 4px 10px; font-size: 12px; }
+  .btn-xs { padding: 3px 8px; font-size: 11px; }
+
+  /* ── Form ── */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-grid.cols-1 { grid-template-columns: 1fr; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group.full { grid-column: 1 / -1; }
+  label { font-size: 13px; color: #555; font-weight: 500; }
+  label .req { color: #dc3545; }
+  input[type=text], input[type=email], input[type=number], input[type=url],
+  select, textarea { width: 100%; padding: 8px 10px; border: 1px solid #d0d5db;
+                     border-radius: 5px; font-size: 13px; font-family: inherit;
+                     background: #fff; transition: border-color .15s; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: #4da6ff; }
+  input[disabled], select[disabled], textarea[disabled]
+    { background: #f5f5f5; color: #888; cursor: not-allowed; }
+  .hint { font-size: 11px; color: #f57c00; margin-top: 2px; }
+  .readonly-hint { font-size: 11px; color: #999; margin-top: 2px; }
+  .radio-group { display: flex; flex-wrap: wrap; gap: 10px; padding: 6px 0; }
+  .radio-group label { display: flex; align-items: center; gap: 4px; font-weight: normal;
+                       cursor: pointer; }
+  .checkbox-group { display: flex; flex-wrap: wrap; gap: 10px; padding: 6px 0; }
+  .checkbox-group label { display: flex; align-items: center; gap: 4px; font-weight: normal;
+                          cursor: pointer; }
+
+  /* ── Table ── */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th { background: #2c3e50; color: #fff; padding: 10px 12px; text-align: left;
+       font-size: 13px; font-weight: 500; white-space: nowrap; }
+  td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; font-size: 13px;
+       vertical-align: middle; }
+  tr:hover td { background: #fafcff; }
+  .table-toolbar { display: flex; align-items: center; justify-content: space-between;
+                   padding: 14px 0; gap: 12px; flex-wrap: wrap; }
+  .table-filters { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .table-filters select { width: auto; min-width: 140px; }
+  .table-search { position: relative; }
+  .table-search input { padding-right: 32px; width: 200px; }
+  .pagination { display: flex; gap: 4px; align-items: center; }
+  .pagination button { padding: 5px 10px; border: 1px solid #d0d5db; background: #fff;
+                       border-radius: 4px; cursor: pointer; font-size: 12px; }
+  .pagination button.active { background: #4da6ff; color: #fff; border-color: #4da6ff; }
+  .pagination button:hover:not(.active) { background: #f0f0f0; }
+  .page-info { font-size: 12px; color: #888; }
+
+  /* ── Badges ── */
+  .badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 11px;
+           font-weight: 500; white-space: nowrap; }
+  .badge-success  { background: #d4edda; color: #155724; }
+  .badge-danger   { background: #f8d7da; color: #721c24; }
+  .badge-warning  { background: #fff3cd; color: #856404; }
+  .badge-info     { background: #d1ecf1; color: #0c5460; }
+  .badge-secondary{ background: #e2e3e5; color: #383d41; }
+  .badge-primary  { background: #cce5ff; color: #004085; }
+  .badge-orange   { background: #ffe0cc; color: #8a3800; }
+
+  /* ── Toggle ── */
+  .toggle { position: relative; display: inline-block; width: 44px; height: 22px; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .slider { position: absolute; cursor: pointer; inset: 0; background: #ccc;
+            border-radius: 22px; transition: .3s; }
+  .slider:before { content: ''; position: absolute; width: 16px; height: 16px;
+                   left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: .3s; }
+  input:checked + .slider { background: #28a745; }
+  input:checked + .slider:before { transform: translateX(22px); }
+
+  /* ── Accordion ── */
+  .accordion-item { border: 1px solid #e0e0e0; border-radius: 6px; margin-bottom: 8px;
+                    overflow: hidden; }
+  .accordion-header { padding: 12px 16px; background: #fd7e14; color: #fff;
+                      cursor: pointer; display: flex; align-items: center;
+                      justify-content: space-between; font-weight: 500; }
+  .accordion-header.open { background: #e06900; }
+  .accordion-sub { padding: 10px 16px; background: #2c7a7a; color: #fff;
+                   font-size: 13px; display: flex; align-items: center; gap: 8px; }
+  .accordion-body { padding: 16px; background: #fff; }
+  .accordion-toggle { font-size: 16px; }
+
+  /* ── Modal ── */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45);
+                   display: flex; align-items: center; justify-content: center;
+                   z-index: 1000; }
+  .modal { background: #fff; border-radius: 8px; width: 580px; max-width: 95vw;
+           max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,.2); }
+  .modal-header { padding: 16px 20px; border-bottom: 1px solid #f0f0f0;
+                  display: flex; justify-content: space-between; align-items: center; }
+  .modal-title { font-size: 15px; font-weight: bold; }
+  .modal-close { background: none; border: none; font-size: 20px; cursor: pointer;
+                 color: #888; line-height: 1; }
+  .modal-body { padding: 20px; }
+  .modal-footer { padding: 14px 20px; border-top: 1px solid #f0f0f0;
+                  display: flex; justify-content: flex-end; gap: 8px; }
+
+  /* ── Toast ── */
+  #toast { position: fixed; bottom: 24px; right: 24px; z-index: 2000;
+           display: flex; flex-direction: column; gap: 8px; }
+  .toast-item { padding: 12px 18px; border-radius: 6px; color: #fff;
+                font-size: 13px; box-shadow: 0 4px 12px rgba(0,0,0,.2);
+                animation: slideIn .3s ease; }
+  .toast-item.success { background: #28a745; }
+  .toast-item.error   { background: #dc3545; }
+  .toast-item.info    { background: #17a2b8; }
+  @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+  /* ── Misc ── */
+  .section-title { font-size: 14px; font-weight: bold; color: #1a2536;
+                   margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #4da6ff; }
+  .url-cell { font-family: monospace; font-size: 11px; color: #555; max-width: 200px;
+              overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tag { display: inline-block; background: #e8f0fe; color: #1a73e8; padding: 2px 8px;
+         border-radius: 12px; font-size: 11px; margin: 2px; }
+  .info-grid { display: grid; grid-template-columns: 140px 1fr; gap: 10px 0; }
+  .info-label { color: #777; font-size: 13px; padding: 4px 0; }
+  .info-value { font-size: 13px; padding: 4px 0; color: #222; font-weight: 500; }
+  .detail-box { background: #f8faff; border: 1px solid #dce8ff; border-radius: 6px;
+                padding: 16px; margin-bottom: 16px; }
+  .review-box { background: #f0fff4; border: 1px solid #b7e4c7; border-radius: 6px;
+                padding: 16px; margin-bottom: 16px; }
+  .apply-box { background: #e8f4fd; border-left: 4px solid #4da6ff;
+               padding: 14px 16px; border-radius: 0 6px 6px 0; }
+  .apply-box .apply-title { font-size: 16px; font-weight: bold; color: #1a2536; margin-bottom: 8px; }
+  .apply-meta { font-size: 13px; color: #555; margin: 3px 0; }
+  .apply-meta strong { color: #1a2536; }
+  .hidden { display: none !important; }
+  hr { border: none; border-top: 1px solid #f0f0f0; margin: 16px 0; }
+
+  /* ── API Ref ── */
+  .api-ref { background: #1e2d40; color: #a8d8a8; font-family: monospace;
+             font-size: 12px; padding: 10px 14px; border-radius: 6px; margin-top: 8px; }
+  .api-method { display: inline-block; padding: 2px 6px; border-radius: 3px;
+                font-size: 11px; font-weight: bold; margin-right: 6px; }
+  .api-method.get    { background: #61affe; color: #fff; }
+  .api-method.post   { background: #49cc90; color: #fff; }
+  .api-method.put    { background: #fca130; color: #fff; }
+  .api-method.delete { background: #f93e3e; color: #fff; }
+  .api-block { background: #fff; border: 1px solid #e0e0e0; border-radius: 6px;
+               padding: 12px; margin-top: 12px; }
+  .api-block-title { font-size: 12px; font-weight: bold; color: #888;
+                     text-transform: uppercase; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════ SIDEBAR ═══════════════════════ -->
+<nav id="sidebar">
+  <div class="logo">MDX <span>後台</span></div>
+
+  <div class="nav-group">
+    <div class="nav-group-title">資料服務</div>
+    <div class="nav-item active" onclick="navigate('groupList')" id="nav-groupList">
+      <span class="icon">📋</span> 服務上下架管理
+    </div>
+    <div class="nav-item" onclick="navigate('reviewList')" id="nav-reviewList">
+      <span class="icon">✅</span> 服務上架審核管理
+    </div>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-title">系統管理</div>
+    <div class="nav-item" onclick="navigate('subsystemList')" id="nav-subsystemList">
+      <span class="icon">⚙️</span> 子系統管理
+    </div>
+  </div>
+</nav>
+
+<!-- ═══════════════════════ MAIN ═══════════════════════ -->
+<div id="main">
+  <div id="topbar">
+    <div>
+      <div class="topbar-title" id="topbar-title">服務上下架管理</div>
+      <div class="breadcrumb" id="breadcrumb"></div>
+    </div>
+    <div style="font-size:12px;color:#888;">開發參考原型 v1.0</div>
+  </div>
+  <div id="content"></div>
+</div>
+
+<!-- ═══════════════════════ TOAST ═══════════════════════ -->
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  MOCK DATA
+// ═══════════════════════════════════════════════════════
+const mockSubsystems = [
+  { id: 1, name: '國土測繪中心圖資雲',       code: 't2dms', email: 'xxx@mail.nlsc.gov.tw',
+    backends: [
+      { code: 'WMTS', host: 'wmts.nlsc.gov.tw', path: '/wmts', port: 443 },
+      { code: 'WFS',  host: 'wfs.nlsc.gov.tw',  path: '/WFS',  port: 443 },
+    ]
+  },
+  { id: 2, name: '國土測繪中心多維度服務平台', code: 't3dms', email: 'xxx@mail.nlsc.gov.tw',
+    backends: [
+      { code: '3DTiles', host: '3dtiles.nlsc.gov.tw', path: '/3dtiles', port: 443 },
+      { code: 'I3S',     host: 'i3s.nlsc.gov.tw',     path: '/i3s',     port: 443 },
+    ]
+  },
+];
+
+const mockGroups = [
+  { id: 1, category: '3D Tiles',  subsystem: 't3dms', name: '3DTiles',   version: 'v1', total: 42, published: 34 },
+  { id: 2, category: '3D Tiles',  subsystem: 't3dms', name: '3DTiles',   version: 'v2', total: 73, published: 73 },
+  { id: 3, category: 'I3S',       subsystem: 't3dms', name: 'I3S',       version: 'v1', total: 80, published: 79 },
+  { id: 4, category: 'WMTS',      subsystem: 't2dms', name: 'WMTS',      version: 'v1', total: 55, published: 55 },
+  { id: 5, category: '地籍圖WFS', subsystem: 't2dms', name: '地籍圖WFS', version: 'v1', total: 3,  published: 3  },
+];
+
+// reviewStatus: 未送審 / 待審中 / 審核中 / 審核通過 / 審核不通過
+// onlineStatus: 上架中 / 下架中
+const mockServices = [
+  { id:1, groupId:4, name:'1/100000 地形圖',         reviewStatus:'審核通過',   onlineStatus:'上架中',
+    applicant:'Randy', applyTime:'2026/05/15', applyType:'服務上架',
+    internalUrl:'/internal/wmts/v1/B100000/{Style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}',
+    externalUrl:'https://tgs.nlsc.gov.tw/api/Maps/WMTS/v1/B100000/{Style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}',
+    category:'WMTS', subsystem:'t2dms',
+    desc:'1/100000 地形圖詳細描述', version:'v2',
+    source:'國土測繪圖資服務雲', updateFreq:'每月', formats:['JSON','XML'],
+    crs:'EPSG：4326', bbox:'POLYGON ((120.683 24.142, 120.663 24.142, 120.663 24.111, 120.683 24.111, 120.683 24.142))',
+    legendUrl:'https://xxx/legend.jpg', keywords:['WMTS','地形圖'],
+    reviewComment:'符合服務上架規範，經審核通過' },
+  { id:2, groupId:4, name:'1/5000基本地形圖_101年',  reviewStatus:'審核不通過', onlineStatus:'下架中',
+    applicant:'Lily', applyTime:'2026/06/01', applyType:'服務下架',
+    internalUrl:'/internal/wmts/v1/B5000_101/{Style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}',
+    externalUrl:'https://tgs.nlsc.gov.tw/api/Maps/WMTS/v1/B5000_101/{Style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}',
+    category:'WMTS', subsystem:'t2dms',
+    desc:'1/5000基本地形圖101年版詳細描述', version:'v1',
+    source:'國土測繪圖資服務雲', updateFreq:'不定時', formats:['XML'],
+    crs:'EPSG：4326', bbox:'', legendUrl:'', keywords:['WMTS','地形圖'],
+    reviewComment:'文本格式不符，請修正後重新送審' },
+  { id:3, groupId:4, name:'1/5000基本地形圖_106年',  reviewStatus:'待審中',     onlineStatus:'上架中',
+    applicant:'John', applyTime:'2026/04/02', applyType:'服務修改',
+    internalUrl:'/internal/wmts/v1/B5000_106/{Style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}',
+    externalUrl:'https://tgs.nlsc.gov.tw/api/Maps/WMTS/v1/B5000_106/{Style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}',
+    category:'WMTS', subsystem:'t2dms',
+    desc:'1/5000基本地形圖106年版詳細描述', version:'v1',
+    source:'國土測繪圖資服務雲', updateFreq:'每年', formats:['JSON','XML'],
+    crs:'EPSG：4326', bbox:'POLYGON ((120.683 24.142, 120.663 24.142, 120.663 24.111, 120.683 24.111, 120.683 24.142))',
+    legendUrl:'', keywords:['WMTS','地形圖'],
+    reviewComment:'' },
+  { id:4, groupId:4, name:'1/5000基本地形圖_109年',  reviewStatus:'審核中',     onlineStatus:'上架中',
+    applicant:'Amy',  applyTime:'2026/06/10', applyType:'服務上架',
+    internalUrl:'/internal/wmts/v1/B5000_109/{Style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}',
+    externalUrl:'https://tgs.nlsc.gov.tw/api/Maps/WMTS/v1/B5000_109/{Style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}',
+    category:'WMTS', subsystem:'t2dms',
+    desc:'1/5000基本地形圖109年版詳細描述', version:'v1',
+    source:'國土測繪圖資服務雲', updateFreq:'每年', formats:['JSON','XML'],
+    crs:'EPSG：4326', bbox:'POLYGON ((120.683 24.142, 120.663 24.142, 120.663 24.111, 120.683 24.111, 120.683 24.142))',
+    legendUrl:'', keywords:['WMTS'],
+    reviewComment:'' },
+  { id:5, groupId:4, name:'1/5000基本地形圖_112年',  reviewStatus:'未送審',     onlineStatus:'下架中',
+    applicant:'Randy', applyTime:'', applyType:'',
+    internalUrl:'/internal/wmts/v1/B5000_112/{Style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}',
+    externalUrl:'',
+    category:'WMTS', subsystem:'t2dms',
+    desc:'1/5000基本地形圖112年版詳細描述', version:'v1',
+    source:'國土測繪圖資服務雲', updateFreq:'每年', formats:['JSON','XML'],
+    crs:'EPSG：4326', bbox:'', legendUrl:'', keywords:['WMTS'],
+    reviewComment:'' },
+
+  // ── groupId:1  3D Tiles v1（42筆，範例顯示6筆）──
+  { id:10, groupId:1, name:'3D_Building_Taipei_v1',    reviewStatus:'審核通過',   onlineStatus:'上架中',
+    applicant:'Randy', applyTime:'2026/03/10', applyType:'服務上架',
+    internalUrl:'/internal/3dtiles/v1/building_taipei',
+    externalUrl:'https://tgs.nlsc.gov.tw/api/3DTiles/v1/building_taipei',
+    category:'3D Tiles', subsystem:'t3dms',
+    desc:'臺北市三維建物模型圖資服務', version:'v1',
+    source:'國土測繪中心多維度服務平台', updateFreq:'每年', formats:['JSON'],
+    crs:'EPSG：4326', bbox:'POLYGON ((121.4635 25.1130, 121.6582 25.1130, 121.6582 24.9539, 121.4635 24.9539, 121.4635 25.1130))',
+    legendUrl:'', keywords:['3DTiles','建物'],
+    reviewComment:'符合服務上架規範，經審核通過' },
+  { id:11, groupId:1, name:'3D_Building_Taichung_v1',  reviewStatus:'審核通過',   onlineStatus:'上架中',
+    applicant:'Amy',   applyTime:'2026/03/10', applyType:'服務上架',
+    internalUrl:'/internal/3dtiles/v1/building_taichung',
+    externalUrl:'https://tgs.nlsc.gov.tw/api/3DTiles/v1/building_taichung',
+    category:'3D Tiles', subsystem:'t3dms',
+    desc:'臺中市三維建物模型圖資服務', version:'v1',
+    source:'國土測繪中心多維度服務平台', updateFreq:'每年', formats:['JSON'],
+    crs:'EPSG：4326', bbox:'', legendUrl:'', keywords:['3DTiles','建物'],
+    reviewComment:'' },
+  { id:12, groupId:1, name:'3D_Building_Kaohsiung_v1', reviewStatus:'審核通過',   onlineStatus:'上架中',
+    applicant:'Randy', applyTime:'2026/03/12', applyType:'服務上架',
+    internalUrl:'/internal/3dtiles/v1/building_kaohsiung',
+    externalUrl:'https://tgs.nlsc.gov.tw/api/3DTiles/v1/building_kaohsiung',
+    category:'3D Tiles', subsystem:'t3dms',
+    desc:'高雄市三維建物模型圖資服務', version:'v1',
+    source:'國土測繪中心多維度服務平台', updateFreq:'每年', formats:['JSON'],
+    crs:'EPSG：4326', bbox:'', legendUrl:'', keywords:['3DTiles','建物'],
+    reviewComment:'' },
+  { id:13, groupId:1, name:'3D_Terrain_Taiwan_v1',     reviewStatus:'待審中',     onlineStatus:'上架中',
+    applicant:'John',  applyTime:'2026/06/15', applyType:'服務修改',
+    internalUrl:'/internal/3dtiles/v1/terrain_taiwan',
+    externalUrl:'https://tgs.nlsc.gov.tw/api/3DTiles/v1/terrain_taiwan',
+    category:'3D Tiles', subsystem:'t3dms',
+    desc:'全臺三維地形模型服務', version:'v1',
+    source:'國土測繪中心多維度服務平台', updateFreq:'每季', formats:['JSON'],
+    crs:'EPSG：4326', bbox:'POLYGON ((119.3 21.9, 122.1 21.9, 122.1 25.4, 119.3 25.4, 119.3 21.9))',
+    legendUrl:'', keywords:['3DTiles','地形'],
+    reviewComment:'' },
+  { id:14, groupId:1, name:'3D_Bridge_Taiwan_v1',      reviewStatus:'審核不通過', onlineStatus:'下架中',
+    applicant:'Lily',  applyTime:'2026/05/01', applyType:'服務上架',
+    internalUrl:'/internal/3dtiles/v1/bridge_taiwan',
+    externalUrl:'',
+    category:'3D Tiles', subsystem:'t3dms',
+    desc:'全臺橋梁三維模型服務', version:'v1',
+    source:'國土測繪中心多維度服務平台', updateFreq:'不定時', formats:['JSON'],
+    crs:'EPSG：4326', bbox:'', legendUrl:'', keywords:['3DTiles','橋梁'],
+    reviewComment:'OAS 文本缺少 x-updateTime 欄位，請補充後重新送審' },
+  { id:15, groupId:1, name:'3D_Road_Taiwan_v1',        reviewStatus:'未送審',     onlineStatus:'下架中',
+    applicant:'Randy', applyTime:'', applyType:'',
+    internalUrl:'/internal/3dtiles/v1/road_taiwan',
+    externalUrl:'',
+    category:'3D Tiles', subsystem:'t3dms',
+    desc:'全臺道路三維模型服務（準備中）', version:'v1',
+    source:'國土測繪中心多維度服務平台', updateFreq:'每年', formats:['JSON'],
+    crs:'EPSG：4326', bbox:'', legendUrl:'', keywords:['3DTiles','道路'],
+    reviewComment:'' },
+
+  // ── groupId:2  3D Tiles v2（73筆，範例顯示5筆）──
+  { id:20, groupId:2, name:'3D_Building_Taipei_v2',    reviewStatus:'審核通過',   onlineStatus:'上架中',
+    applicant:'Randy', applyTime:'2026/04/01', applyType:'服務上架',
+    internalUrl:'/internal/3dtiles/v2/building_taipei',
+    externalUrl:'https://tgs.nlsc.gov.tw/api/3DTiles/v2/building_taipei',
+    category:'3D Tiles', subsystem:'t3dms',
+    desc:'臺北市三維建物模型圖資服務（V2，精度提升）', version:'v2',
+    source:'國土測繪中心多維度服務平台', updateFreq:'每年', formats:['JSON'],
+    crs:'EPSG：4326', bbox:'POLYGON ((121.4635 25.1130, 121.6582 25.1130, 121.6582 24.9539, 121.4635 24.9539, 121.4635 25.1130))',
+    legendUrl:'', keywords:['3DTiles','建物','v2'],
+    reviewComment:'' },
+  { id:21, groupId:2, name:'3D_Building_NewTaipei_v2', reviewStatus:'審核通過',   onlineStatus:'上架中',
+    applicant:'Amy',   applyTime:'2026/04/05', applyType:'服務上架',
+    internalUrl:'/internal/3dtiles/v2/building_newtaipei',
+    externalUrl:'https://tgs.nlsc.gov.tw/api/3DTiles/v2/building_newtaipei',
+    category:'3D Tiles', subsystem:'t3dms',
+    desc:'新北市三維建物模型圖資服務（V2）', version:'v2',
+    source:'國土測繪中心多維度服務平台', updateFreq:'每年', formats:['JSON'],
+    crs:'EPSG：4326', bbox:'', legendUrl:'', keywords:['3DTiles','建物'],
+    reviewComment:'' },
+  { id:22, groupId:2, name:'3D_Terrain_Taiwan_v2',     reviewStatus:'審核中',     onlineStatus:'上架中',
+    applicant:'John',  applyTime:'2026/06/20', applyType:'服務上架',
+    internalUrl:'/internal/3dtiles/v2/terrain_taiwan',
+    externalUrl:'https://tgs.nlsc.gov.tw/api/3DTiles/v2/terrain_taiwan',
+    category:'3D Tiles', subsystem:'t3dms',
+    desc:'全臺三維地形模型服務（V2，0.5m精度）', version:'v2',
+    source:'國土測繪中心多維度服務平台', updateFreq:'每季', formats:['JSON'],
+    crs:'EPSG：4326', bbox:'', legendUrl:'', keywords:['3DTiles','地形','v2'],
+    reviewComment:'' },
+
+  // ── groupId:3  I3S v1（80筆，範例顯示5筆）──
+  { id:30, groupId:3, name:'I3S_Building_Taipei_v1',   reviewStatus:'審核通過',   onlineStatus:'上架中',
+    applicant:'Randy', applyTime:'2026/02/14', applyType:'服務上架',
+    internalUrl:'/internal/i3s/v1/building_taipei',
+    externalUrl:'https://tgs.nlsc.gov.tw/api/I3S/v1/building_taipei',
+    category:'I3S', subsystem:'t3dms',
+    desc:'臺北市 I3S 三維建物服務', version:'v1',
+    source:'國土測繪中心多維度服務平台', updateFreq:'每年', formats:['JSON'],
+    crs:'EPSG：4326', bbox:'POLYGON ((121.4635 25.1130, 121.6582 25.1130, 121.6582 24.9539, 121.4635 24.9539, 121.4635 25.1130))',
+    legendUrl:'', keywords:['I3S','建物'],
+    reviewComment:'' },
+  { id:31, groupId:3, name:'I3S_Building_Taoyuan_v1',  reviewStatus:'審核通過',   onlineStatus:'上架中',
+    applicant:'Lily',  applyTime:'2026/02/14', applyType:'服務上架',
+    internalUrl:'/internal/i3s/v1/building_taoyuan',
+    externalUrl:'https://tgs.nlsc.gov.tw/api/I3S/v1/building_taoyuan',
+    category:'I3S', subsystem:'t3dms',
+    desc:'桃園市 I3S 三維建物服務', version:'v1',
+    source:'國土測繪中心多維度服務平台', updateFreq:'每年', formats:['JSON'],
+    crs:'EPSG：4326', bbox:'', legendUrl:'', keywords:['I3S','建物'],
+    reviewComment:'' },
+  { id:32, groupId:3, name:'I3S_PointCloud_Taiwan_v1', reviewStatus:'待審中',     onlineStatus:'下架中',
+    applicant:'Amy',   applyTime:'2026/06/18', applyType:'服務上架',
+    internalUrl:'/internal/i3s/v1/pointcloud_taiwan',
+    externalUrl:'',
+    category:'I3S', subsystem:'t3dms',
+    desc:'全臺點雲資料 I3S 服務（航測原始資料）', version:'v1',
+    source:'國土測繪中心多維度服務平台', updateFreq:'不定時', formats:['JSON'],
+    crs:'EPSG：4326', bbox:'', legendUrl:'', keywords:['I3S','點雲'],
+    reviewComment:'' },
+  { id:33, groupId:3, name:'I3S_Terrain_Taiwan_v1',    reviewStatus:'未送審',     onlineStatus:'下架中',
+    applicant:'John',  applyTime:'', applyType:'',
+    internalUrl:'/internal/i3s/v1/terrain_taiwan',
+    externalUrl:'',
+    category:'I3S', subsystem:'t3dms',
+    desc:'全臺 I3S 地形服務（準備中）', version:'v1',
+    source:'國土測繪中心多維度服務平台', updateFreq:'每季', formats:['JSON'],
+    crs:'', bbox:'', legendUrl:'', keywords:['I3S','地形'],
+    reviewComment:'' },
+
+  // ── groupId:5  地籍圖WFS v1（3筆）──
+  { id:50, groupId:5, name:'地籍圖_臺北市_WFS',        reviewStatus:'審核通過',   onlineStatus:'上架中',
+    applicant:'Randy', applyTime:'2026/01/10', applyType:'服務上架',
+    internalUrl:'/internal/wfs/v1/cadastral_taipei',
+    externalUrl:'https://tgs.nlsc.gov.tw/api/WFS/v1/cadastral_taipei',
+    category:'地籍圖WFS', subsystem:'t2dms',
+    desc:'臺北市地籍圖 WFS 服務', version:'v1',
+    source:'國土測繪圖資服務雲', updateFreq:'每日', formats:['JSON','GML'],
+    crs:'EPSG：4326', bbox:'POLYGON ((121.4635 25.1130, 121.6582 25.1130, 121.6582 24.9539, 121.4635 24.9539, 121.4635 25.1130))',
+    legendUrl:'', keywords:['WFS','地籍'],
+    reviewComment:'' },
+  { id:51, groupId:5, name:'地籍圖_新北市_WFS',        reviewStatus:'審核通過',   onlineStatus:'上架中',
+    applicant:'Lily',  applyTime:'2026/01/10', applyType:'服務上架',
+    internalUrl:'/internal/wfs/v1/cadastral_newtaipei',
+    externalUrl:'https://tgs.nlsc.gov.tw/api/WFS/v1/cadastral_newtaipei',
+    category:'地籍圖WFS', subsystem:'t2dms',
+    desc:'新北市地籍圖 WFS 服務', version:'v1',
+    source:'國土測繪圖資服務雲', updateFreq:'每日', formats:['JSON','GML'],
+    crs:'EPSG：4326', bbox:'', legendUrl:'', keywords:['WFS','地籍'],
+    reviewComment:'' },
+  { id:52, groupId:5, name:'地籍圖_桃園市_WFS',        reviewStatus:'審核通過',   onlineStatus:'上架中',
+    applicant:'Amy',   applyTime:'2026/01/10', applyType:'服務上架',
+    internalUrl:'/internal/wfs/v1/cadastral_taoyuan',
+    externalUrl:'https://tgs.nlsc.gov.tw/api/WFS/v1/cadastral_taoyuan',
+    category:'地籍圖WFS', subsystem:'t2dms',
+    desc:'桃園市地籍圖 WFS 服務', version:'v1',
+    source:'國土測繪圖資服務雲', updateFreq:'每日', formats:['JSON','GML'],
+    crs:'EPSG：4326', bbox:'', legendUrl:'', keywords:['WFS','地籍'],
+    reviewComment:'' },
+];
+
+// ═══════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════
+let currentPage = 'groupList';
+let currentGroupId = null;
+let currentServiceId = null;
+let isApplicantView = true; // true=申請者, false=審核者
+
+// ═══════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════
+function toast(msg, type = 'success') {
+  const el = document.createElement('div');
+  el.className = `toast-item ${type}`;
+  el.textContent = msg;
+  document.getElementById('toast').appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+function setBreadcrumb(parts) {
+  document.getElementById('breadcrumb').innerHTML =
+    '🏠 / ' + parts.map((p, i) =>
+      i < parts.length - 1 ? `<span onclick="${p.fn}">${p.label}</span>` : p.label
+    ).join(' / ');
+}
+
+function setTopbar(title) {
+  document.getElementById('topbar-title').textContent = title;
+}
+
+function setActiveNav(id) {
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  document.getElementById('nav-' + id)?.classList.add('active');
+}
+
+function reviewBadge(status) {
+  const map = {
+    '未送審':   'badge-secondary',
+    '待審中':   'badge-warning',
+    '審核中':   'badge-orange',
+    '審核通過': 'badge-success',
+    '審核不通過':'badge-danger',
+  };
+  return `<span class="badge ${map[status] || 'badge-secondary'}">${status}</span>`;
+}
+
+function onlineBadge(status) {
+  return status === '上架中'
+    ? `<span class="badge badge-success">● 上架中</span>`
+    : `<span class="badge badge-secondary">○ 下架中</span>`;
+}
+
+function applyTypeBadge(type) {
+  const map = { '服務上架':'badge-primary', '服務下架':'badge-danger', '服務修改':'badge-warning' };
+  return type ? `<span class="badge ${map[type] || 'badge-secondary'}" style="font-size:12px;">${type}</span>` : '-';
+}
+
+// ═══════════════════════════════════════════════════════
+//  NAVIGATE
+// ═══════════════════════════════════════════════════════
+function navigate(page, params = {}) {
+  currentPage = page;
+  if (params.groupId !== undefined) currentGroupId = params.groupId;
+  if (params.serviceId !== undefined) currentServiceId = params.serviceId;
+  render();
+}
+
+function render() {
+  const pages = {
+    groupList:      renderGroupList,
+    editGroup:      renderEditGroup,
+    serviceList:    renderServiceList,
+    editService:    renderEditService,
+    serviceDetail:  renderServiceDetail,
+    serviceMonitor: renderServiceMonitor,
+    reviewList:     renderReviewList,
+    reviewDetail:   renderReviewDetail,
+    subsystemList:  renderSubsystemList,
+    editSubsystem:  renderEditSubsystem,
+  };
+  (pages[currentPage] || renderGroupList)();
+}
+
+// ═══════════════════════════════════════════════════════
+//  PAGE: 服務群組列表
+// ═══════════════════════════════════════════════════════
+function renderGroupList() {
+  setActiveNav('groupList');
+  setTopbar('服務上下架管理');
+  setBreadcrumb([{ label: '資料服務' }, { label: '服務上下架管理' }]);
+
+  const rows = mockGroups.map(g => `
+    <tr>
+      <td>${g.category}</td>
+      <td>${g.subsystem}</td>
+      <td>${g.name}</td>
+      <td>${g.version}</td>
+      <td>${g.total}</td>
+      <td>${g.published}</td>
+      <td>
+        <button class="btn btn-primary btn-xs" onclick="navigate('editGroup',{groupId:${g.id}})">✎ 編輯</button>
+        <button class="btn btn-danger btn-xs" onclick="deleteGroup(${g.id})">✕ 刪除</button>
+      </td>
+      <td>
+        <button class="btn btn-outline btn-xs" onclick="navigate('serviceList',{groupId:${g.id}})">☰ 資料服務列表</button>
+      </td>
+    </tr>`).join('');
+
+  document.getElementById('content').innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">服務上下架管理</span>
+        <button class="btn btn-success btn-sm" onclick="navigate('editGroup',{groupId:0})">＋ 新增資料服務群組</button>
+      </div>
+      <div class="card-body">
+        <div class="table-toolbar">
+          <div class="table-filters">
+            <label>服務分類</label>
+            <select onchange="filterGroups(this.value)">
+              <option value="">全部</option>
+              <option>3D Tiles</option><option>I3S</option>
+              <option>WMTS</option><option>地籍圖WFS</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>服務分類</th><th>子系統</th><th>服務群組名稱</th>
+              <th>服務版本</th><th>服務數量</th><th>已上架服務數量</th>
+              <th>管理</th><th>資料服務</th>
+            </tr></thead>
+            <tbody id="groupTbody">${rows}</tbody>
+          </table>
+        </div>
+        <div class="api-block">
+          <div class="api-block-title">API 端點參考</div>
+          <div><span class="api-method get">GET</span><code>/api/service-groups?category={category}</code> — 取得群組列表</div>
+          <div><span class="api-method delete">DELETE</span><code>/api/service-groups/{id}</code> — 刪除群組</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function deleteGroup(id) {
+  if (confirm('確定刪除此群組？')) {
+    const idx = mockGroups.findIndex(g => g.id === id);
+    if (idx > -1) mockGroups.splice(idx, 1);
+    toast('群組已刪除');
+    renderGroupList();
+  }
+}
+
+function filterGroups(val) {
+  const rows = mockGroups
+    .filter(g => !val || g.category === val)
+    .map(g => `
+      <tr>
+        <td>${g.category}</td><td>${g.subsystem}</td><td>${g.name}</td>
+        <td>${g.version}</td><td>${g.total}</td><td>${g.published}</td>
+        <td>
+          <button class="btn btn-primary btn-xs" onclick="navigate('editGroup',{groupId:${g.id}})">✎ 編輯</button>
+          <button class="btn btn-danger btn-xs" onclick="deleteGroup(${g.id})">✕ 刪除</button>
+        </td>
+        <td><button class="btn btn-outline btn-xs" onclick="navigate('serviceList',{groupId:${g.id}})">☰ 資料服務列表</button></td>
+      </tr>`).join('');
+  document.getElementById('groupTbody').innerHTML = rows;
+}
+
+// ═══════════════════════════════════════════════════════
+//  PAGE: 編輯資料服務群組
+// ═══════════════════════════════════════════════════════
+function renderEditGroup() {
+  const g = mockGroups.find(x => x.id === currentGroupId) || {};
+  const isNew = !g.id;
+  setTopbar('服務上下架管理');
+  setBreadcrumb([
+    { label:'資料服務' },
+    { label:'服務上架管理', fn:"navigate('groupList')" },
+    { label: isNew ? '新增資料服務群組' : '編輯資料服務群組' }
+  ]);
+
+  const categories = ['WMTS','3DTiles','I3S','3DAPI','WMS','地籍圖磚','千分之一地形圖WFS',
+    '地段外圍圖WFS','地籍圖WFS','國土利用WFS','電子地圖WFS','開放API','地籍API','地籍圖API',
+    '問牌API','路徑規劃API','國土利用API'];
+
+  const catRadios = categories.map(c =>
+    `<label><input type="radio" name="category" value="${c}" ${(g.category||'WMTS')===c?'checked':''}> ${c}</label>`
+  ).join('');
+
+  document.getElementById('content').innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">${isNew ? '新增' : '編輯'}資料服務群組</span>
+        <span style="background:#e8f0fe;color:#1a73e8;padding:4px 10px;border-radius:12px;font-size:12px;">頁面 ①</span>
+      </div>
+      <div class="card-body">
+        <form id="groupForm" onsubmit="saveGroup(event)">
+          <div class="form-grid cols-1" style="max-width:700px;">
+
+            <div class="form-group">
+              <label><span class="req">*</span> 服務分類</label>
+              <div class="radio-group">${catRadios}</div>
+              <div class="readonly-hint">選項固定，解析 OAS 而來，不可調整</div>
+            </div>
+
+            <div class="form-group">
+              <label><span class="req">*</span> 子系統</label>
+              <select name="subsystem">
+                <option value="t2dms" ${g.subsystem==='t2dms'?'selected':''}>國土測繪圖資服務雲 (t2dms)</option>
+                <option value="t3dms" ${g.subsystem==='t3dms'?'selected':''}>國土測繪中心多維度服務平台 (t3dms)</option>
+              </select>
+              <div class="readonly-hint">解析 OAS 而來，不可調整</div>
+            </div>
+
+            <div class="form-group">
+              <label><span class="req">*</span> 服務後端位置</label>
+              <select name="backend" disabled>
+                <option>WMTS (wmts.nlsc.gov.tw:443/wmts)</option>
+              </select>
+              <div class="readonly-hint">以 OAS 及子系統設定為準，不可調整</div>
+            </div>
+
+            <div class="form-grid">
+              <div class="form-group">
+                <label><span class="req">*</span> 服務版本</label>
+                <input type="text" name="version" value="${g.version||''}" placeholder="例：V2"
+                  oninput="syncGroupName(this)">
+                <div class="readonly-hint">與服務群組名稱連動</div>
+              </div>
+              <div class="form-group">
+                <label><span class="req">*</span> 服務群組名稱</label>
+                <input type="text" name="groupName" id="groupNameInput" value="${g.name||''}" placeholder="例：V2版WMTS服務">
+                <div class="readonly-hint">與服務版本連動</div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label><span class="req">*</span> 顯示順序</label>
+              <input type="number" name="order" value="1" style="width:100px;">
+            </div>
+
+            <div class="form-group">
+              <label><span class="req">*</span> Swagger 文本 URI</label>
+              <div style="display:flex;gap:8px;">
+                <input type="url" name="oasUri" value="https://wmts.nlsc.gov.tw/OasDoc/V2" style="flex:1;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="toast('文本已更新','info')">更新文本</button>
+              </div>
+              <div class="hint">⚠ OAS 文本需包含 x-updateTime 欄位（與 operationId 同層），請與來源單位確認</div>
+            </div>
+
+            <div class="form-group">
+              <label><span class="req">*</span> Swagger 文本名稱</label>
+              <input type="text" name="oasName" value="${isNew?'':g.name+' 服務'}" disabled>
+              <div class="readonly-hint">解析 OAS 而來，不可調整</div>
+            </div>
+
+            <div class="form-group">
+              <label><span class="req">*</span> Swagger 文本描述</label>
+              <textarea name="oasDesc" rows="3" placeholder="支援 HTML 格式（&lt;br&gt;、&lt;span&gt;）">本平臺提供涵蓋全國尺度之 WMTS 圖資服務 API，歡迎各產政學單位介接使用。</textarea>
+            </div>
+
+            <div class="form-group">
+              <label>挑選欲新增的服務</label>
+              <div style="display:flex;gap:8px;margin-bottom:8px;">
+                <input type="text" placeholder="服務名稱關鍵字" style="flex:1;">
+                <input type="date" style="width:150px;">
+                <input type="date" style="width:150px;">
+                <button type="button" class="btn btn-primary btn-sm">查詢</button>
+              </div>
+              <div style="border:1px solid #d0d5db;border-radius:5px;padding:10px;max-height:160px;overflow-y:auto;">
+                ${['1/25000地形圖107','1/25000地形圖109','1/25000地形圖110','1/25000地形圖111','1/25000地形圖112'].map((s,i) =>
+                  `<label style="display:block;padding:4px 0;cursor:pointer;">
+                    <input type="checkbox" ${i<2?'checked':''}> ${s}
+                  </label>`).join('')}
+              </div>
+              <div class="readonly-hint">清單由 OAS 解析而來</div>
+            </div>
+          </div>
+
+          <div style="margin-top:20px;display:flex;gap:8px;">
+            <button type="submit" class="btn btn-primary">修改</button>
+            <button type="button" class="btn btn-secondary" onclick="navigate('groupList')">取消</button>
+          </div>
+        </form>
+        <div class="api-block" style="margin-top:20px;">
+          <div class="api-block-title">API 端點參考</div>
+          <div><span class="api-method get">GET</span><code>/api/service-groups/{id}</code> — 取得群組詳細</div>
+          <div><span class="api-method post">POST</span><code>/api/service-groups</code> — 新增群組</div>
+          <div><span class="api-method put">PUT</span><code>/api/service-groups/{id}</code> — 更新群組</div>
+          <div><span class="api-method get">GET</span><code>/api/oas/parse?uri={uri}</code> — 解析 OAS 文本</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function syncGroupName(input) {
+  const nameInput = document.getElementById('groupNameInput');
+  if (nameInput && !nameInput.dataset.manual) {
+    nameInput.value = input.value ? `${input.value} 版服務` : '';
+  }
+}
+
+function saveGroup(e) {
+  e.preventDefault();
+  toast('資料服務群組已儲存');
+  navigate('groupList');
+}
+
+// ═══════════════════════════════════════════════════════
+//  PAGE: 資料服務列表
+// ═══════════════════════════════════════════════════════
+function renderServiceList() {
+  const group = mockGroups.find(g => g.id === currentGroupId) || {};
+  setTopbar('服務上下架管理');
+  setBreadcrumb([
+    { label:'資料服務' },
+    { label:'服務上架管理', fn:"navigate('groupList')" },
+    { label:'資料服務列表' }
+  ]);
+
+  const services = mockServices.filter(s => s.groupId === currentGroupId);
+
+  const counts = { total: services.length, published: 0, pending: 0, unpublished: 0 };
+  services.forEach(s => {
+    if (s.onlineStatus === '上架中' && s.reviewStatus === '審核通過') counts.published++;
+    if (s.reviewStatus === '待審中' || s.reviewStatus === '審核中') counts.pending++;
+    if (s.reviewStatus === '未送審' || s.reviewStatus === '審核不通過') counts.unpublished++;
+  });
+
+  const rows = services.map(s => {
+    // 操作按鈕邏輯（依業務規則）
+    let actionBtns = '';
+    if (s.reviewStatus === '待審中') {
+      actionBtns = `<button class="btn btn-warning btn-xs" onclick="withdrawApply(${s.id})">撤回申請</button>`;
+    }
+
+    // 上下架按鈕
+    const toggleBtn = s.onlineStatus === '上架中'
+      ? `<button class="btn btn-danger btn-xs" onclick="applyToggle(${s.id},'下架')">申請下架</button>`
+      : `<button class="btn btn-success btn-xs" onclick="applyToggle(${s.id},'上架')" ${s.reviewStatus!=='審核通過'&&s.reviewStatus!=='未送審'?'disabled':''}>申請上架</button>`;
+
+    return `<tr>
+      <td>${s.name}</td>
+      <td>
+        <div class="url-cell" title="${s.internalUrl}">🔒 ${s.internalUrl}</div>
+        <div class="url-cell" title="${s.externalUrl}" style="color:#1a73e8;">🌐 ${s.externalUrl||'—'}</div>
+      </td>
+      <td>${reviewBadge(s.reviewStatus)}</td>
+      <td>${onlineBadge(s.onlineStatus)}</td>
+      <td>
+        <button class="btn btn-primary btn-xs" onclick="navigate('editService',{serviceId:${s.id}})">✎ 編輯服務</button>
+        <button class="btn btn-outline btn-xs" onclick="navigate('serviceDetail',{serviceId:${s.id}})">☰ 編輯細項</button>
+        ${actionBtns}
+      </td>
+      <td>
+        ${toggleBtn}
+        <button class="btn btn-secondary btn-xs" onclick="navigate('serviceMonitor',{serviceId:${s.id}})">🖥 監控</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('content').innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">資料服務列表｜${group.category || ''} / ${group.name || ''} ${group.version || ''}</span>
+        <span style="background:#e8f0fe;color:#1a73e8;padding:4px 10px;border-radius:12px;font-size:12px;">頁面 ②</span>
+      </div>
+      <div class="card-body">
+
+        <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+          ${[
+            ['全選', counts.total, ''],
+            ['已上架', counts.published, '#d4edda'],
+            ['待審核', counts.pending, '#fff3cd'],
+            ['未上架', counts.unpublished, '#e2e3e5'],
+          ].map(([label, count, bg]) =>
+            `<label style="cursor:pointer;background:${bg||'#f8f9fa'};border:1px solid #dee2e6;
+              border-radius:20px;padding:4px 14px;font-size:13px;">
+              <input type="radio" name="statusFilter" value="${label}"> ${label} (${count})
+            </label>`
+          ).join('')}
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>服務名稱</th>
+              <th>URL<br><span style="font-weight:normal;font-size:11px;color:#b0c4d8;">🔒 內部（僅審核者可見）／🌐 外部</span></th>
+              <th>審核狀態</th><th>上下架</th><th>操作</th><th>管理</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+
+        <div style="margin-top:12px;" class="page-info">
+          顯示第 1 至 ${services.length} 筆結果，共 ${services.length} 筆
+        </div>
+
+        <!-- 業務規則說明 -->
+        <div style="margin-top:16px;background:#fff8e1;border:1px solid #ffe082;border-radius:6px;padding:14px;">
+          <div style="font-weight:bold;margin-bottom:8px;">⚠ 業務規則</div>
+          <ul style="padding-left:16px;font-size:13px;line-height:2;">
+            <li>申請者與審核者皆可操作上下架；<strong>申請者</strong>操作時，進入審核流程</li>
+            <li><strong>待審中</strong>時，申請者只能「撤回申請」後才能修改</li>
+            <li>必填欄位皆已填寫，才可送出上架申請</li>
+            <li>下架中時修改服務，<strong>不會觸發申請流程</strong></li>
+          </ul>
+        </div>
+
+        <div class="api-block" style="margin-top:16px;">
+          <div class="api-block-title">API 端點參考</div>
+          <div><span class="api-method get">GET</span><code>/api/service-groups/{groupId}/services?status={status}</code></div>
+          <div><span class="api-method post">POST</span><code>/api/services/{id}/apply</code> — 送出上架／下架申請（body: { applyType }）</div>
+          <div><span class="api-method post">POST</span><code>/api/services/{id}/withdraw</code> — 撤回申請</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function withdrawApply(id) {
+  const s = mockServices.find(x => x.id === id);
+  if (s) { s.reviewStatus = '未送審'; toast('申請已撤回'); renderServiceList(); }
+}
+
+function applyToggle(id, action) {
+  const s = mockServices.find(x => x.id === id);
+  if (!s) return;
+  if (action === '下架') {
+    s.reviewStatus = '待審中'; s.applyType = '服務下架';
+    toast(`已送出${action}申請，等待審核`, 'info');
+  } else {
+    s.reviewStatus = '待審中'; s.applyType = '服務上架';
+    toast(`已送出${action}申請，等待審核`, 'info');
+  }
+  renderServiceList();
+}
+
+// ═══════════════════════════════════════════════════════
+//  PAGE: 資料服務設定（編輯服務）
+// ═══════════════════════════════════════════════════════
+function renderEditService() {
+  const s = mockServices.find(x => x.id === currentServiceId) || {};
+  setTopbar('服務上下架管理');
+  setBreadcrumb([
+    { label:'資料服務' },
+    { label:'服務上架管理', fn:"navigate('groupList')" },
+    { label:'資料服務列表', fn:`navigate('serviceList',{groupId:${currentGroupId}})` },
+    { label:'編輯服務' }
+  ]);
+
+  const freqs = ['每分鐘','每小時','每日','每週','每月','每季','每年','不定時','其他'];
+  const formats = ['JSON','JSONL','XML','GEOJSON','GML','WKT','ZIP'];
+
+  document.getElementById('content').innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">資料服務設定</span>
+        <span style="background:#e8f0fe;color:#1a73e8;padding:4px 10px;border-radius:12px;font-size:12px;">頁面 ③</span>
+      </div>
+      <div class="card-body">
+        <form onsubmit="saveService(event)" style="max-width:700px;">
+          <div class="form-grid cols-1" style="gap:14px;">
+
+            <div class="form-group">
+              <label><span class="req">*</span> 服務分類</label>
+              <input type="text" value="${s.category||'WMTS'}" disabled>
+              <div class="readonly-hint">前頁已決定，不可調整</div>
+            </div>
+
+            <div class="form-group">
+              <label><span class="req">*</span> 服務名稱</label>
+              <input type="text" value="${s.name||''}" placeholder="服務名稱">
+              <div class="readonly-hint">預帶 OAS 資料，可修改</div>
+            </div>
+
+            <div class="form-group">
+              <label><span class="req">*</span> 服務描述</label>
+              <textarea rows="2">${s.desc||''}</textarea>
+              <div class="readonly-hint">預帶 OAS 資料，可修改</div>
+            </div>
+
+            <div class="form-group">
+              <label><span class="req">*</span> 服務版本</label>
+              <input type="text" value="${s.version||''}" disabled>
+              <div class="readonly-hint">以 OAS 及群組資料為準，不可修改</div>
+            </div>
+
+            <div class="form-group">
+              <label><span class="req">*</span> 服務 URI</label>
+              <input type="text" value="${s.internalUrl||''}" disabled style="font-family:monospace;font-size:12px;">
+              <div class="readonly-hint">以 OAS 及群組資料為準，不可修改</div>
+            </div>
+
+            <div class="form-group">
+              <label><span class="req">*</span> 資料來源</label>
+              <input type="text" value="${s.source||''}">
+            </div>
+
+            <div class="form-group">
+              <label><span class="req">*</span> 服務後端位置</label>
+              <select disabled>
+                <option>WMTS (wmts.nlsc.gov.tw:443/wmts)</option>
+              </select>
+              <div class="readonly-hint">不可修改</div>
+            </div>
+
+            <div class="form-group">
+              <label><span class="req">*</span> 來源資料更新頻率</label>
+              <div class="radio-group">
+                ${freqs.map(f => `<label><input type="radio" name="freq" value="${f}" ${s.updateFreq===f?'checked':''}> ${f}</label>`).join('')}
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>資料格式</label>
+              <div class="checkbox-group">
+                ${formats.map(f => `<label><input type="checkbox" ${(s.formats||[]).includes(f)?'checked':''}> ${f}</label>`).join('')}
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>資料提供機關</label>
+              <input type="text" value="台北市政府資訊局">
+            </div>
+
+            <div class="form-group">
+              <label>坐標系統 <span style="color:#f57c00;font-size:11px;">（依服務分類條件式必填，待確認）</span></label>
+              <input type="text" value="${s.crs||''}">
+            </div>
+
+            <div class="form-group">
+              <label>空間範圍（WKT） <span style="color:#f57c00;font-size:11px;">（依服務分類條件式必填，待確認）</span></label>
+              <input type="text" value="${s.bbox||''}" placeholder="POLYGON ((...))">
+            </div>
+
+            <div class="form-group">
+              <label>圖例網址 <span style="color:#f57c00;font-size:11px;">（依服務分類條件式必填，待確認）</span></label>
+              <input type="url" value="${s.legendUrl||''}">
+            </div>
+
+            <div class="form-group">
+              <label>關鍵字</label>
+              <div id="tagArea" style="display:flex;flex-wrap:wrap;gap:6px;padding:8px;border:1px solid #d0d5db;border-radius:5px;min-height:40px;">
+                ${(s.keywords||[]).map(k => `<span class="tag">${k} <span style="cursor:pointer;" onclick="this.parentElement.remove()">✕</span></span>`).join('')}
+                <input type="text" id="tagInput" placeholder="輸入後按 Enter 新增"
+                  style="border:none;outline:none;font-size:13px;flex:1;min-width:120px;"
+                  onkeydown="addTag(event)">
+              </div>
+            </div>
+
+          </div>
+          <div style="margin-top:20px;display:flex;gap:8px;">
+            <button type="submit" class="btn btn-primary">修改</button>
+            <button type="button" class="btn btn-secondary" onclick="navigate('serviceList',{groupId:${currentGroupId}})">取消</button>
+          </div>
+        </form>
+        <div class="api-block" style="margin-top:20px;">
+          <div class="api-block-title">API 端點參考</div>
+          <div><span class="api-method get">GET</span><code>/api/services/{id}</code> — 取得服務詳細</div>
+          <div><span class="api-method put">PUT</span><code>/api/services/{id}</code> — 更新服務設定</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function addTag(e) {
+  if (e.key === 'Enter') {
+    const v = e.target.value.trim();
+    if (v) {
+      const tag = document.createElement('span');
+      tag.className = 'tag';
+      tag.innerHTML = `${v} <span style="cursor:pointer;" onclick="this.parentElement.remove()">✕</span>`;
+      e.target.before(tag);
+      e.target.value = '';
+    }
+    e.preventDefault();
+  }
+}
+
+function saveService(e) {
+  e.preventDefault();
+  toast('服務設定已儲存');
+  navigate('serviceList', { groupId: currentGroupId });
+}
+
+// ═══════════════════════════════════════════════════════
+//  PAGE: 資料服務細項
+// ═══════════════════════════════════════════════════════
+function renderServiceDetail() {
+  const s = mockServices.find(x => x.id === currentServiceId) || {};
+  setTopbar('服務上下架管理');
+  setBreadcrumb([
+    { label:'資料服務' },
+    { label:'服務上架管理', fn:"navigate('groupList')" },
+    { label:'資料服務列表', fn:`navigate('serviceList',{groupId:${currentGroupId}})` },
+    { label:'資料服務細項' }
+  ]);
+
+  const regions = ['臺北市','新北市','桃園市','臺中市','臺南市','高雄市'];
+  const accordions = regions.map((r, i) => `
+    <div class="accordion-item">
+      <div class="accordion-header ${i===0?'open':''}" onclick="toggleAccordion(this)">
+        <span>▼ 取得${r}指定地號查詢位置</span>
+        <span class="accordion-toggle">${i===0?'▲':'▼'}</span>
+      </div>
+      <div class="accordion-sub">☰ 服務細項</div>
+      <div class="accordion-body" ${i===0?'':'style="display:none;"'}>
+        <div class="form-grid cols-1" style="max-width:600px;gap:12px;">
+          <div class="form-group">
+            <label><span class="req">*</span> 服務細項名稱</label>
+            <input type="text" value="取得${r}指定地號查詢位置">
+          </div>
+          <div class="form-group">
+            <label>資料提供機關</label>
+            <input type="text" value="${r === '臺北市' ? '臺北大眾捷運股份有限公司' : r+'政府'}">
+          </div>
+          <div class="form-group">
+            <label><span class="req">*</span> API URI</label>
+            <input type="text" value="/dmaps/CadasMapPosition/${'ABCDEFG'[i]}/{Section}/{LandNo}"
+              style="font-family:monospace;font-size:12px;">
+            <div class="readonly-hint">依地區而不同的欄位</div>
+          </div>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:8px;">
+          <button class="btn btn-primary btn-sm">修改</button>
+          <button class="btn btn-danger btn-sm">刪除</button>
+          <button class="btn btn-outline btn-sm" onclick="navigate('serviceMonitor',{serviceId:${s.id}})">🖥 服務監控</button>
+        </div>
+      </div>
+    </div>`).join('');
+
+  document.getElementById('content').innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">資料服務細項</span>
+        <span style="background:#e8f0fe;color:#1a73e8;padding:4px 10px;border-radius:12px;font-size:12px;">頁面 ④</span>
+      </div>
+      <div class="card-body">
+        <div style="background:#f8f9fa;border-radius:6px;padding:10px 14px;margin-bottom:16px;font-family:monospace;font-size:13px;">
+          ${s.name} &nbsp; ${s.internalUrl||''}
+        </div>
+        <button class="btn btn-success btn-sm" style="margin-bottom:16px;">＋ 新增一筆資料服務細項</button>
+        ${accordions}
+        <div class="api-block" style="margin-top:16px;">
+          <div class="api-block-title">API 端點參考</div>
+          <div><span class="api-method get">GET</span><code>/api/services/{id}/sub-items</code> — 取得細項列表</div>
+          <div><span class="api-method post">POST</span><code>/api/services/{id}/sub-items</code> — 新增細項</div>
+          <div><span class="api-method put">PUT</span><code>/api/sub-items/{subId}</code> — 更新細項</div>
+          <div><span class="api-method delete">DELETE</span><code>/api/sub-items/{subId}</code> — 刪除細項</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function toggleAccordion(header) {
+  const body = header.parentElement.querySelector('.accordion-body');
+  const toggle = header.querySelector('.accordion-toggle');
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : 'block';
+  toggle.textContent = isOpen ? '▼' : '▲';
+  header.classList.toggle('open', !isOpen);
+}
+
+// ═══════════════════════════════════════════════════════
+//  PAGE: 資料服務監控
+// ═══════════════════════════════════════════════════════
+function renderServiceMonitor() {
+  const s = mockServices.find(x => x.id === currentServiceId) || {};
+  setTopbar('服務上下架管理');
+  setBreadcrumb([
+    { label:'資料服務' },
+    { label:'服務上架管理', fn:"navigate('groupList')" },
+    { label:'資料服務列表', fn:`navigate('serviceList',{groupId:${currentGroupId}})` },
+    { label:'服務監控設定' }
+  ]);
+
+  const freqs = ['1分鐘','3分鐘','5分鐘','10分鐘','30分鐘','1小時','3小時','6小時','12小時','24小時'];
+
+  document.getElementById('content').innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">資料服務監控</span>
+        <span style="background:#e8f0fe;color:#1a73e8;padding:4px 10px;border-radius:12px;font-size:12px;">頁面 ⑤</span>
+      </div>
+      <div class="card-body">
+        <div style="background:#f8f9fa;border-radius:6px;padding:10px 14px;margin-bottom:16px;font-family:monospace;font-size:13px;">
+          ${s.name} &nbsp; ${s.internalUrl||''}
+        </div>
+        <div style="border:1px solid #e0e0e0;border-radius:6px;overflow:hidden;">
+          <div style="background:#4a5568;color:#fff;padding:10px 16px;font-weight:bold;">🖥 服務監控 — API 監控設定</div>
+          <div style="padding:20px;">
+            <form onsubmit="saveMonitor(event)" style="max-width:600px;">
+              <div class="form-group" style="margin-bottom:16px;">
+                <label>監控狀況</label>
+                <div style="display:flex;align-items:center;gap:10px;margin-top:4px;">
+                  <label class="toggle"><input type="checkbox" checked id="monToggle"><span class="slider"></span></label>
+                  <span id="monLabel" style="font-size:13px;color:#28a745;">● 開啟</span>
+                </div>
+              </div>
+              <div class="form-group" style="margin-bottom:16px;">
+                <label>監控 URI</label>
+                <input type="text" value="/dmaps/CadasMapPosition/A/00001/00002?top=1"
+                  style="font-family:monospace;font-size:12px;">
+                <div class="readonly-hint">填入含實際測試參數的路徑</div>
+              </div>
+              <div class="form-group" style="margin-bottom:16px;">
+                <label>監控逾時（秒）</label>
+                <input type="number" value="30" style="width:100px;">
+              </div>
+              <div class="form-group" style="margin-bottom:20px;">
+                <label>監控頻率</label>
+                <div class="radio-group">
+                  ${freqs.map(f => `<label><input type="radio" name="freq" value="${f}" ${f==='5分鐘'?'checked':''}> ${f}</label>`).join('')}
+                </div>
+                <div class="readonly-hint">預設：5分鐘</div>
+              </div>
+              <div style="display:flex;gap:8px;">
+                <button type="submit" class="btn btn-primary">修改</button>
+                <button type="button" class="btn btn-danger" onclick="toast('監控設定已刪除','error');navigate('serviceDetail',{serviceId:${s.id}})">刪除</button>
+              </div>
+            </form>
+          </div>
+        </div>
+        <div class="api-block" style="margin-top:16px;">
+          <div class="api-block-title">API 端點參考</div>
+          <div><span class="api-method get">GET</span><code>/api/sub-items/{subId}/monitor</code> — 取得監控設定</div>
+          <div><span class="api-method put">PUT</span><code>/api/sub-items/{subId}/monitor</code> — 更新監控設定</div>
+          <div><span class="api-method delete">DELETE</span><code>/api/sub-items/{subId}/monitor</code> — 刪除監控設定</div>
+        </div>
+      </div>
+    </div>`;
+
+  document.getElementById('monToggle').addEventListener('change', function() {
+    document.getElementById('monLabel').textContent = this.checked ? '● 開啟' : '○ 關閉';
+    document.getElementById('monLabel').style.color = this.checked ? '#28a745' : '#999';
+  });
+}
+
+function saveMonitor(e) {
+  e.preventDefault();
+  toast('監控設定已儲存');
+}
+
+// ═══════════════════════════════════════════════════════
+//  PAGE: 服務上架審核管理
+// ═══════════════════════════════════════════════════════
+function renderReviewList() {
+  setActiveNav('reviewList');
+  setTopbar('服務上架審核管理');
+  setBreadcrumb([{ label:'資料服務' }, { label:'服務上架審核管理' }]);
+
+  // 只顯示有送審的（非未送審）
+  const pending = mockServices.filter(s =>
+    ['待審中','審核中','審核通過','審核不通過'].includes(s.reviewStatus)
+  );
+  const counts = {
+    all: pending.length,
+    pending: pending.filter(s => s.reviewStatus === '待審中').length,
+    pass: pending.filter(s => s.reviewStatus === '審核通過').length,
+    fail: pending.filter(s => s.reviewStatus === '審核不通過').length,
+  };
+
+  const rows = pending.map(s => {
+    let statusCell = reviewBadge(s.reviewStatus);
+    if (s.reviewStatus === '待審中') {
+      statusCell = `<button class="btn btn-warning btn-sm" onclick="startReview(${s.id})">開始審核</button>`;
+    } else if (s.reviewStatus === '審核中') {
+      statusCell = `
+        <button class="btn btn-success btn-sm" onclick="passReview(${s.id})">通過</button>
+        <button class="btn btn-danger btn-sm" onclick="rejectReview(${s.id})">退回</button>`;
+    }
+    return `<tr>
+      <td>${s.name}</td>
+      <td>${s.subsystem}</td>
+      <td>${s.category}</td>
+      <td>${s.applicant||'—'}</td>
+      <td>${s.applyTime||'—'}</td>
+      <td>${applyTypeBadge(s.applyType)}</td>
+      <td>${statusCell}</td>
+      <td>
+        <button class="btn btn-primary btn-xs" onclick="navigate('reviewDetail',{serviceId:${s.id}})">📄 詳細資訊</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('content').innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">服務上下架審核管理</span>
+        <span style="font-size:12px;color:#888;">入口：後台選單 → 服務上架審核管理</span>
+      </div>
+      <div class="card-body">
+        <div class="table-toolbar">
+          <div class="table-filters">
+            <select style="min-width:120px;"><option>全部服務分類</option><option>WMTS</option><option>3DTiles</option></select>
+            <select style="min-width:160px;"><option>全部服務群組</option><option>WMTS 服務 (V1)</option></select>
+            <div style="display:flex;gap:8px;">
+              ${[
+                ['全選', counts.all],
+                ['待審核', counts.pending],
+                ['審核通過', counts.pass],
+                ['審核不通過', counts.fail],
+              ].map(([label,count]) =>
+                `<label style="cursor:pointer;font-size:13px;display:flex;align-items:center;gap:4px;">
+                  <input type="radio" name="reviewFilter" value="${label}"> ${label} (${count})
+                </label>`
+              ).join('')}
+            </div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>名稱</th><th>子系統</th><th>服務分類</th><th>申請者</th>
+              <th>申請時間</th><th>申請項目</th><th>審核狀態</th>
+              <th>詳細資訊 ⑥</th>
+            </tr></thead>
+            <tbody id="reviewTbody">${rows}</tbody>
+          </table>
+        </div>
+        <div style="margin-top:12px;font-size:12px;color:#888;">
+          ⓘ 待審中 → 點「開始審核」轉為審核中 → 點「通過」或「退回」完成審核
+        </div>
+        <div class="api-block" style="margin-top:16px;">
+          <div class="api-block-title">API 端點參考</div>
+          <div><span class="api-method get">GET</span><code>/api/review/services?category=&groupId=&status=</code> — 審核列表</div>
+          <div><span class="api-method post">POST</span><code>/api/review/services/{id}/start</code> — 開始審核（待審中→審核中）</div>
+          <div><span class="api-method post">POST</span><code>/api/review/services/{id}/pass</code> — 審核通過</div>
+          <div><span class="api-method post">POST</span><code>/api/review/services/{id}/reject</code> — 審核不通過（body: { comment }）</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function startReview(id) {
+  const s = mockServices.find(x => x.id === id);
+  if (s) { s.reviewStatus = '審核中'; toast('狀態已更新為：審核中', 'info'); renderReviewList(); }
+}
+
+function passReview(id) {
+  const s = mockServices.find(x => x.id === id);
+  if (s) {
+    s.reviewStatus = '審核通過'; s.onlineStatus = '上架中';
+    toast('服務已審核通過，上架完成');
+    renderReviewList();
+  }
+}
+
+function rejectReview(id) {
+  const s = mockServices.find(x => x.id === id);
+  if (s) {
+    const comment = prompt('請輸入退回原因：');
+    s.reviewStatus = '審核不通過';
+    if (comment) s.reviewComment = comment;
+    toast('服務已退回', 'error');
+    renderReviewList();
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  PAGE: 服務詳細資訊（審核者用）
+// ═══════════════════════════════════════════════════════
+function renderReviewDetail() {
+  const s = mockServices.find(x => x.id === currentServiceId) || {};
+  setTopbar('服務上架審核管理');
+  setBreadcrumb([
+    { label:'資料服務' },
+    { label:'服務上架審核管理', fn:"navigate('reviewList')" },
+    { label:'服務詳細資訊' }
+  ]);
+
+  document.getElementById('content').innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">服務詳細資訊</span>
+        <span style="background:#e8f0fe;color:#1a73e8;padding:4px 10px;border-radius:12px;font-size:12px;">頁面 ⑥</span>
+      </div>
+      <div class="card-body">
+
+        <!-- 上方：申請摘要（左）＋ 審核意見（右） -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+          <div class="apply-box">
+            <div class="apply-title">${s.name}</div>
+            <div class="apply-meta"><strong>申請項目：</strong>${applyTypeBadge(s.applyType)}</div>
+            <div class="apply-meta"><strong>申請時間：</strong>${s.applyTime||'—'}</div>
+            <div class="apply-meta"><strong>申請者：</strong>${s.applicant||'—'}</div>
+          </div>
+          <div class="review-box">
+            <div style="font-weight:bold;margin-bottom:8px;color:#155724;">審核意見</div>
+            <textarea id="reviewComment" rows="3" style="width:100%;border:1px solid #b7e4c7;border-radius:5px;padding:8px;font-size:13px;"
+              placeholder="請填寫審核意見...">${s.reviewComment||''}</textarea>
+            <div style="margin-top:10px;display:flex;gap:8px;">
+              <button class="btn btn-success btn-sm" onclick="reviewAction(${s.id},'pass')">通過</button>
+              <button class="btn btn-danger btn-sm" onclick="reviewAction(${s.id},'reject')">退回</button>
+              <button class="btn btn-secondary btn-sm" onclick="navigate('reviewList')">取消</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 服務基礎內容 -->
+        <div class="detail-box">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+            <span style="background:#4da6ff;color:#fff;border-radius:50%;width:22px;height:22px;
+              display:flex;align-items:center;justify-content:center;font-size:12px;">ℹ</span>
+            <span style="font-weight:bold;font-size:14px;">服務基礎內容</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            <div class="info-grid">
+              <div class="info-label">服務分類</div><div class="info-value">${s.category||'—'}</div>
+              <div class="info-label">資料服務群組</div><div class="info-value">WMTS　V2版服務</div>
+              <div class="info-label">服務版本</div><div class="info-value">${s.version||'—'}</div>
+              <div class="info-label">資料來源</div><div class="info-value">${s.source||'—'}</div>
+              <div class="info-label">資料提供機關</div><div class="info-value">台北市政府資訊局</div>
+              <div class="info-label">坐標系統</div><div class="info-value">${s.crs||'—'}</div>
+              <div class="info-label">空間範圍</div><div class="info-value" style="font-size:11px;font-family:monospace;">${s.bbox||'—'}</div>
+            </div>
+            <div class="info-grid">
+              <div class="info-label">服務描述</div><div class="info-value">${s.desc||'—'}</div>
+              <div class="info-label">圖例網址</div><div class="info-value">${s.legendUrl||'—'}</div>
+              <div class="info-label">關鍵字</div><div class="info-value">${(s.keywords||[]).map(k=>`<span class="tag">${k}</span>`).join('')}</div>
+              <div class="info-label">資料格式</div><div class="info-value">${(s.formats||[]).join('、')}</div>
+            </div>
+          </div>
+          <hr>
+          <div class="info-grid" style="margin-top:8px;">
+            <div class="info-label">服務原始連結</div>
+            <div class="info-value" style="font-family:monospace;font-size:12px;word-break:break-all;">${s.internalUrl||'—'}</div>
+            <div class="info-label">訂閱網服務連結</div>
+            <div class="info-value" style="font-family:monospace;font-size:12px;word-break:break-all;">${s.externalUrl||'—'}</div>
+          </div>
+        </div>
+
+        <div class="api-block">
+          <div class="api-block-title">API 端點參考</div>
+          <div><span class="api-method get">GET</span><code>/api/review/services/{id}</code> — 取得服務詳細（審核用）</div>
+          <div><span class="api-method post">POST</span><code>/api/review/services/{id}/pass</code> — 通過（body: { comment }）</div>
+          <div><span class="api-method post">POST</span><code>/api/review/services/{id}/reject</code> — 退回（body: { comment }）</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function reviewAction(id, action) {
+  const s = mockServices.find(x => x.id === id);
+  const comment = document.getElementById('reviewComment')?.value || '';
+  if (!s) return;
+  if (action === 'pass') {
+    if (s.reviewStatus !== '審核中') { toast('請先點「開始審核」', 'error'); return; }
+    s.reviewStatus = '審核通過'; s.reviewComment = comment; s.onlineStatus = '上架中';
+    toast('審核通過，服務已上架');
+  } else {
+    if (s.reviewStatus !== '審核中') { toast('請先點「開始審核」', 'error'); return; }
+    s.reviewStatus = '審核不通過'; s.reviewComment = comment;
+    toast('服務已退回', 'error');
+  }
+  navigate('reviewList');
+}
+
+// ═══════════════════════════════════════════════════════
+//  PAGE: 子系統管理列表
+// ═══════════════════════════════════════════════════════
+function renderSubsystemList() {
+  setActiveNav('subsystemList');
+  setTopbar('子系統管理');
+  setBreadcrumb([{ label:'系統管理' }, { label:'子系統管理' }]);
+
+  const rows = mockSubsystems.map(s => `
+    <tr>
+      <td>${s.name}</td>
+      <td>${s.code}</td>
+      <td><span class="badge badge-success">正常</span></td>
+      <td>
+        <button class="btn btn-primary btn-xs" onclick="navigate('editSubsystem',{serviceId:${s.id}})">✎ 編輯</button>
+        <button class="btn btn-danger btn-xs" onclick="toast('子系統已刪除','error')">✕ 刪除</button>
+      </td>
+    </tr>`).join('');
+
+  document.getElementById('content').innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">子系統管理</span>
+        <button class="btn btn-success btn-sm" onclick="navigate('editSubsystem',{serviceId:0})">＋ 新增子系統</button>
+      </div>
+      <div class="card-body">
+        <div class="table-toolbar">
+          <div></div>
+          <input type="text" placeholder="Search..." style="width:200px;">
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>子系統名稱 ↑↓</th><th>代碼 ↑↓</th><th>處理狀態</th><th>操作</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+        <div style="margin-top:10px;" class="page-info">
+          顯示第 1 至 ${mockSubsystems.length} 筆結果，共 ${mockSubsystems.length} 筆
+        </div>
+        <div class="api-block" style="margin-top:16px;">
+          <div class="api-block-title">API 端點參考</div>
+          <div><span class="api-method get">GET</span><code>/api/subsystems</code> — 取得子系統列表</div>
+          <div><span class="api-method delete">DELETE</span><code>/api/subsystems/{id}</code> — 刪除子系統</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  PAGE: 編輯子系統
+// ═══════════════════════════════════════════════════════
+function renderEditSubsystem() {
+  const s = mockSubsystems.find(x => x.id === currentServiceId) || {};
+  const isNew = !s.id;
+  setTopbar('子系統管理');
+  setBreadcrumb([
+    { label:'系統管理' },
+    { label:'子系統管理', fn:"navigate('subsystemList')" },
+    { label: isNew ? '新增子系統' : '編輯子系統管理' }
+  ]);
+
+  const backendRows = (s.backends || []).map((b, i) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:8px;background:#f8f9fa;
+                border-radius:5px;margin-bottom:6px;flex-wrap:wrap;">
+      <span style="background:#dc3545;color:#fff;padding:2px 8px;border-radius:3px;font-size:12px;font-weight:bold;">
+        代碼：${b.code}
+      </span>
+      <span style="font-size:13px;">位置：<code>${b.host}</code></span>
+      <span style="font-size:13px;">路徑：<code>${b.path}</code></span>
+      <span style="font-size:13px;">Port：<code>${b.port}</code></span>
+      <button class="btn btn-danger btn-xs">✕</button>
+    </div>`).join('');
+
+  document.getElementById('content').innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">${isNew ? '新增' : '編輯'}子系統管理</span>
+      </div>
+      <div class="card-body">
+        <form onsubmit="saveSubsystem(event)" style="max-width:660px;">
+          <div class="form-grid cols-1" style="gap:14px;">
+            <div class="form-group">
+              <label><span class="req">*</span> 子系統名稱</label>
+              <input type="text" value="${s.name||''}" placeholder="例：國土測繪圖資服務雲">
+            </div>
+            <div class="form-group">
+              <label><span class="req">*</span> 代碼</label>
+              <input type="text" value="${s.code||''}" placeholder="例：t2dms" style="width:200px;">
+            </div>
+            <div class="form-group">
+              <label>電子郵件</label>
+              <input type="email" value="${s.email||''}" placeholder="xxx@mail.nlsc.gov.tw">
+            </div>
+
+            <div class="form-group">
+              <label><span class="req">*</span> 後端服務網址</label>
+              <div style="display:grid;grid-template-columns:120px 1fr 1fr 80px auto;gap:8px;margin-bottom:8px;align-items:center;">
+                <input type="text" placeholder="代碼（UpStream.Name）">
+                <input type="text" placeholder="位置（Target.target）">
+                <input type="text" placeholder="路徑（Service.path）">
+                <input type="number" placeholder="Port">
+                <button type="button" class="btn btn-success btn-sm" onclick="toast('後端已加入','info')">＋ 加入</button>
+              </div>
+              <div style="background:#fff3e0;border:1px solid #ffe0b2;border-radius:5px;padding:10px;font-size:12px;margin-bottom:10px;">
+                <strong>欄位對應 Kong 設定：</strong><br>
+                代碼 → <code>UpStream.Name</code> &nbsp;｜&nbsp;
+                位置 → <code>Target.target</code> &nbsp;｜&nbsp;
+                路徑 → <code>Service.path</code>（實際用 request-transformer plugin）&nbsp;｜&nbsp;
+                Port → <code>Service.Port</code>
+              </div>
+              ${backendRows}
+            </div>
+          </div>
+          <div style="margin-top:20px;display:flex;gap:8px;">
+            <button type="submit" class="btn btn-primary">修改</button>
+            <button type="button" class="btn btn-secondary" onclick="navigate('subsystemList')">取消</button>
+          </div>
+        </form>
+        <div class="api-block" style="margin-top:20px;">
+          <div class="api-block-title">API 端點參考</div>
+          <div><span class="api-method get">GET</span><code>/api/subsystems/{id}</code> — 取得子系統詳細</div>
+          <div><span class="api-method post">POST</span><code>/api/subsystems</code> — 新增子系統</div>
+          <div><span class="api-method put">PUT</span><code>/api/subsystems/{id}</code> — 更新子系統</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function saveSubsystem(e) {
+  e.preventDefault();
+  toast('子系統已儲存');
+  navigate('subsystemList');
+}
+
+// ═══════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════
+render();
+</script>
+</body>
+</html>
